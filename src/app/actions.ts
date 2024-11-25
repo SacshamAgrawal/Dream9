@@ -2,7 +2,7 @@
 
 import { Player } from '@/types/player'
 
-export async function submitTeam(players: Player[], email: string, password: string) {
+export async function submitTeam(players: Player[], user_name: string, password: string) {
   try {
     // Encode username and password for Basic Authentication
     const url = 'https://sacshamagrawal.pythonanywhere.com';
@@ -18,9 +18,10 @@ export async function submitTeam(players: Player[], email: string, password: str
         'Content-Type': 'application/json',
         'Authorization': `Basic ${credentials}`, // Add Basic Auth header
       },
-      body: JSON.stringify({ players, email, password }),
+      body: JSON.stringify({ players, user_name, password }),
     })
 
+    console.log(response);
     if (!response.ok) {
       const errorData = await response.json()
       return { success: false, error: errorData.error || "Failed to submit team. Please try again." }
@@ -30,6 +31,8 @@ export async function submitTeam(players: Player[], email: string, password: str
     const data = await response.json()
     return { success: true, data }
   } catch (error) {
+    console.error('Error submitting team:', error)
     return { success: false, error: "An error occurred while submitting the team. Please try again." }
   }
 }
+

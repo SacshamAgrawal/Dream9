@@ -29,7 +29,7 @@ def init_db():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS teams (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
+                user_name TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL
             )
         ''')
@@ -46,24 +46,32 @@ def init_db():
         ''')
         conn.commit()
 
+
+@app.route('/api/test', methods=['GET'])
+def testing():
+    """A dummy endpoint for testing."""
+    return jsonify({"message": "This is a test endpoint", "status": "success"}), 200
+
+
+
 @app.route('/api/submit-team', methods=['POST'])
 @auth.login_required
 def submit_team():
-    """Handle team submission with players, email, and password."""
+    """Handle team submission with players, user_name, and password."""
     data = request.get_json()
     players = data.get('players')
-    email = data.get('email')
+    user_name = data.get('user_name')
     password = data.get('password')
 
-    if not email or not players or not isinstance(players, list) or not password:
+    if not user_name or not players or not isinstance(players, list) or not password:
         return jsonify({"success": False, "error": "Invalid input"}), 400
 
     try:
         with sqlite3.connect(DATABASE_PATH) as conn:
             cursor = conn.cursor()
 
-            # Check if the email already exists
-            cursor.execute('SELECT id, password_hash FROM teams WHERE email = ?', (email,))
+            # Check if the user_name already exists
+            cursor.execute('SELECT id, password_hash FROM teams WHERE user_name = ?', (user_name,))
             team = cursor.fetchone()
 
             if team:
@@ -72,7 +80,7 @@ def submit_team():
                 team_id, password_hash = team
                 if not bcrypt.checkpw(password.encode('utf-8'), password_hash):
                     return jsonify({"success": False, "error": "Incorrect password!! Please use your password!"}), 401
-                
+
                 # Update players for the team
                 cursor.execute('DELETE FROM players WHERE team_id = ?', (team_id,))
                 for player in players:
@@ -86,7 +94,7 @@ def submit_team():
                 # New team, create entry
                 logger.debug("# New team, create entry")
                 password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-                cursor.execute('INSERT INTO teams (email, password_hash) VALUES (?, ?)', (email, password_hash))
+                cursor.execute('INSERT INTO teams (user_name, password_hash) VALUES (?, ?)', (user_name, password_hash))
                 team_id = cursor.lastrowid
 
                 # Insert players for the new team
@@ -101,6 +109,8 @@ def submit_team():
     except sqlite3.Error as e:
         return jsonify({"success": False, "error": f"Database error: {e}"}), 500
 
+
+init_db()  # Ensure database is initialized
+
 if __name__ == '__main__':
-    init_db()  # Ensure database is initialized
     app.run(debug=True, port=os.environ.get('PORT', 5001))
